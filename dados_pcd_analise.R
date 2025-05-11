@@ -80,20 +80,14 @@ pop_sol_cred<-10000
 set.seed(999)
 n <- pop_sol_cred * 0.09
 
-idade <- c(
-  sample(2:9, n * 0.04, replace = TRUE), # 2 a 9 - 4%
-  sample(10:19,n * 0.05, replace = TRUE), # 10 a 19 - 5%
-  sample(20:29,n * 0.06, replace = TRUE), # 20 a 29 - 6%
-  sample(30:39,n * 0.08, replace = TRUE), # 30 a 39 - 8%
-  sample(40:49,n * 0.12, replace = TRUE), # 40 a 49 - 12%
-  sample(50:59,n * 0.17, replace = TRUE), # 50 a 59 - 17%
-  sample(60:69,n * 0.18, replace = TRUE), # 60 a 69 - 18%
-  sample(70:79,n * 0.16, replace = TRUE), # 70 a 79 - 16%
-  sample(80:105, n * 0.14, replace = TRUE) # 80+ - 14%
-)
+proporcoes <- c(0.04, 0.05, 0.06, 0.08, 0.12, 0.17, 0.18, 0.16, 0.14)
+grupos <- 1:9
+idade_grupo <- sample(grupos, size = 900, replace = TRUE, prob = proporcoes)
 
-idade <- factor(idade,   # transformando os numeros em labels
-                levels = c(1:8),
+idade_grupo
+
+idade_grupo <- factor(idade_grupo,   # transformando os numeros em labels
+                levels = c(1:9),
                 labels = c("2 a 9 anos",
                           "10 a 19 anos",
                           "20 a 29 anos",
@@ -101,7 +95,9 @@ idade <- factor(idade,   # transformando os numeros em labels
                           "40 a 49 anos",
                           "50 a 59 anos",
                           "60 a 69 anos",
-                          "70+ anos")) 
+                          "70 a 79 anos",
+                          "80+ anos"))
+table(idade_grupo)
 
 renda <- rnorm(n, mean = 1524.63, sd = 500)
 hist(renda)
@@ -117,8 +113,8 @@ pagador <- rbinom(n,1,.85) # 0 eh mau e 1 eh bom
 
 pagador <- factor(pagador,
                 levels = c(0:1),
-                labels = c("Mau Pagador",
-                          "Bom Pagador")) 
+                labels = c("Bom Pagador",
+                          "Mau Pagador")) 
 
 genero <- rbinom(n,1,.63) # 0 eh homem e 1 eh mulher
 
@@ -127,16 +123,38 @@ genero <- factor(genero,
                 labels = c("Masculino",
                           "Feminino")) 
 
-# Gráficos de Barra OU Linhas
 library(ggplot2)
 
-# comparar grupos de idade x qualidade pagador - linhas eh melhor pq sao vários
-comp_idade_pagador <- data.frame(idade, pagador) 
+comp_idade_pagador <- data.frame(idade_grupo, pagador) 
+table(comp_idade_pagador)
 
-# comparar genero x qualidade pagador - barra eh melhor pq sao 2 grupos
+library(dplyr)
 
-# empregabilidade x qualidade pagador - barra eh melhor pq sao 2 grupos
+df_resumo <- comp_idade_pagador %>%
+  group_by(idade_grupo, pagador) %>%
+  summarise(Quantidade = n(), .groups = "drop")
+df_resumo
 
-# comparar renda por faixas etárias (infatojuvenil, adulto, idosos) - correlação é uma boa, mas pd ser media de renda por faixa etária (barras)
+ggplot(df_resumo, aes(x = idade_grupo, y = Quantidade, fill = pagador)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Distribuição de Pagadores por Faixa Etária",
+       x = "Faixa Etária",
+       y = "Quantidade",
+       fill = "Tipo de Pagador")
 
-# faixas etárias x qualidade pagador - barra ou linha btw
+df <- data.frame(IdadeGrupo = idade_grupo, Trabalho = trabalho, Pagador = pagador, Genêro = genero, Renda = renda)
+df
+mediaInfantoJuvenil <- mean(c(mean(df$Renda[df$IdadeGrupo == "2 a 9 anos"]), mean(df$Renda[df$IdadeGrupo == "10 a 19 anos"])))
+mediaInfantoJuvenil
+
+mediaAdulto <- mean(c(mean(df$Renda[df$IdadeGrupo == "20 a 29 anos"]), mean(df$Renda[df$IdadeGrupo == "30 a 39 anos"]), mean(df$Renda[df$IdadeGrupo == "40 a 49 anos"]), mean(df$Renda[df$IdadeGrupo == "50 a 59 anos"])))
+mediaAdulto
+
+mediaIdosos <- mean(c(mean(df$Renda[df$IdadeGrupo == "60 a 69 anos"]), mean(df$Renda[df$IdadeGrupo == "70 a 79 anos"]), mean(df$Renda[df$IdadeGrupo == "80+ anos"])))
+mediaIdosos
+
+medias <- data.frame(FaixaEtária = c("Infantojuvenil", "Adulto", "Idosos"), Médias = c(mediaInfantoJuvenil, mediaAdulto, mediaIdosos))
+
+ggplot(medias, aes(x = FaixaEtária, y = Médias)) +
+  geom_bar(stat = "identity", color = "black", fill = c("blue4", "darkgreen", "red4")) +
+  labs(title = "Média de renda por faixa etária", x = "Faixas Etária", y = "Médias")
